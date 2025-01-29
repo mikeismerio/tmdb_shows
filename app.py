@@ -97,24 +97,50 @@ elif st.session_state.page == "details":
         movie = st.session_state.selected_movie
         base_url = "https://image.tmdb.org/t/p/w500"
 
+        # =================== Mostrar Imagen de Fondo ===================
         if hasattr(movie, 'backdrop_path') and movie.backdrop_path:
             st.image(base_url + movie.backdrop_path, use_column_width=True)
 
-        col1, col2 = st.columns([1, 2])
+        # =================== Diseño en Dos Columnas ===================
+        col1, col2 = st.columns([1, 2])  # La segunda columna es más grande para los detalles
+
         with col1:
-            st.image(movie.image_url, width=250)
+            if hasattr(movie, 'poster_path') and movie.poster_path:
+                st.image(base_url + movie.poster_path, width=250)  # Imagen más pequeña
+            else:
+                st.warning("No hay imagen disponible.")
 
         with col2:
             st.markdown(f"# {movie.name} ({str(movie.first_air_date)[:4] if hasattr(movie, 'first_air_date') and movie.first_air_date else 'N/A'})")
             st.markdown(f"**Rating:** {movie.vote_average:.2f} ⭐ ({movie.vote_count} votos)")
-            st.markdown(f"**Idioma original:** {movie.original_language.upper()}")
+            st.markdown(f"**Idioma original:** {movie.original_language.upper() if hasattr(movie, 'original_language') else 'N/A'}")
+            st.markdown(f"**Número de temporadas:** {movie.number_of_seasons if hasattr(movie, 'number_of_seasons') else 'N/A'}")
+            st.markdown(f"**Número de episodios:** {movie.number_of_episodes if hasattr(movie, 'number_of_episodes') else 'N/A'}")
+            st.markdown(f"**Popularidad:** {movie.popularity if hasattr(movie, 'popularity') else 'N/A'}")
+            st.markdown(f"**Estado:** {movie.status if hasattr(movie, 'status') else 'N/A'}")
+            st.markdown(f"**En producción:** {'Sí' if hasattr(movie, 'in_production') and movie.in_production else 'No'}")
             st.markdown(f"**Géneros:** {movie.genres if hasattr(movie, 'genres') else 'No disponible'}")
-            st.markdown(f"### Descripción")
-            st.markdown(movie.overview if hasattr(movie, 'overview') else "No disponible")
+            st.markdown(f"**Creador(es):** {', '.join(movie.created_by) if hasattr(movie, 'created_by') and movie.created_by else 'No disponible'}")
 
+            # =================== Sinopsis ===================
+            st.markdown(f"### Descripción")
+            st.markdown(movie.overview if hasattr(movie, 'overview') and movie.overview else "No disponible")
+
+        # =================== Mostrar Información Adicional ===================
+        st.markdown("---")  # Línea divisoria para separar el contenido
+
+        # =================== Mostrar el reparto si está disponible ===================
+        if hasattr(movie, 'cast') and movie.cast:
+            st.markdown("### Reparto Principal")
+            for actor in movie.cast[:5]:  # Mostrar solo los primeros 5 actores
+                st.write(f"🎭 {actor}")
+
+        # =================== Botón para volver a la lista ===================
         if st.button("Volver a la lista"):
             navigate("home")
+
     else:
         st.warning("No se ha seleccionado ninguna serie.")
         if st.button("Volver a la lista"):
             navigate("home")
+
