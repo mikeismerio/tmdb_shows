@@ -9,7 +9,7 @@ st.set_page_config(page_title="Inicio", page_icon="🏠", layout="wide")
 # =================== Configuración de Base de Datos ===================
 server = "nwn7f7ze6vtuxen5age454nhca-colrz4odas5unhn7cagatohexq.datawarehouse.fabric.microsoft.com"
 database = "TMDB"
-driver = "ODBC Driver 17 for SQL Server"  # ✅ Usa ODBC 17
+driver = "ODBC Driver 17 for SQL Server"  # ✅ Corregido para usar ODBC 17
 table = "tmdb_shows_clean"
 
 # Obtener credenciales desde variables de entorno (Streamlit Secrets)
@@ -79,7 +79,11 @@ if st.session_state.page == "home":
             for index, row in enumerate(top_shows.itertuples()):
                 with cols[index % cols_per_row]:
                     st.image(row.image_url, use_container_width=True)
-                    button_label = f"{row.name} ({row.first_air_date[:4] if hasattr(row, 'first_air_date') else 'N/A'})"
+                    
+                    # ✅ Corrección: Evitar error si first_air_date es None o no es un string
+                    first_air_year = str(row.first_air_date)[:4] if hasattr(row, 'first_air_date') and row.first_air_date else "N/A"
+                    
+                    button_label = f"{row.name} ({first_air_year})"
                     if st.button(button_label, key=row.Index):
                         navigate("details", row)
         else:
@@ -101,7 +105,7 @@ elif st.session_state.page == "details":
             st.image(movie.image_url, width=250)
 
         with col2:
-            st.markdown(f"# {movie.name} ({movie.first_air_date[:4] if hasattr(movie, 'first_air_date') else 'N/A'})")
+            st.markdown(f"# {movie.name} ({str(movie.first_air_date)[:4] if hasattr(movie, 'first_air_date') and movie.first_air_date else 'N/A'})")
             st.markdown(f"**Rating:** {movie.vote_average:.2f} ⭐ ({movie.vote_count} votos)")
             st.markdown(f"**Idioma original:** {movie.original_language.upper()}")
             st.markdown(f"**Géneros:** {movie.genres if hasattr(movie, 'genres') else 'No disponible'}")
