@@ -1,0 +1,12 @@
+# Evitar que se suba el archivo de credenciales
+.env
+
+# Evitar archivos temporales de Python
+__pycache__/
+*.pyc
+
+# Evitar archivos de sistema
+.DS_Store
+
+# Evitar bases de datos locales (si las hubiera)
+*.sqlite3
