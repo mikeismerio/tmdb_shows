@@ -39,38 +39,41 @@ def fetch_data(query):
         return pd.DataFrame()
 
 @st.cache_data
-def filter_top_shows(df, genre):
-    """Filtra y ordena las 10 mejores series según el género"""
-    if genre:
-        filtered_shows = df[df['genres'].str.contains(genre, case=False, na=False)]
-        top_shows = filtered_shows.sort_values(by='vote_average', ascending=False).head(10)
-        if not top_shows.empty:
-            base_url = "https://image.tmdb.org/t/p/w500"
-            top_shows['image_url'] = base_url + top_shows['poster_path']
-            return top_shows[top_shows['image_url'].notna()]
+def filter_top_movies(df, gen, title, over, adlt):
+    """Filtra y ordena las 10 mejores películas según los filtros aplicados"""
+    filtered_movies = df[
+        (df['genres'].str.contains(gen, case=False, na=False)) &
+        (df['title'].str.contains(title, case=False, na=False)) &
+        (df['overview'].str.contains(over, case=False, na=False)) &
+        (df['adult'] == adlt)
+    ]
+    top_movies = filtered_movies.sort_values(by='vote_average', ascending=False).head(10)
+    if not top_movies.empty:
+        base_url = "https://image.tmdb.org/t/p/w500"
+        top_movies['image_url'] = base_url + top_movies['poster_path']
+        return top_movies[top_movies['image_url'].notna()]
     return pd.DataFrame()
 
 @st.cache_data
-def filter_top_movies(df, genre):
-    """Filtra y ordena las 10 mejores películas según el género, excluyendo las de contenido adulto"""
-    if genre:
-        filtered_movies = df[
-            (df['genres'].str.contains(genre, case=False, na=False)) & 
-            (df['adult'] == False)  # Excluir películas con contenido adulto
-        ]
-        top_movies = filtered_movies.sort_values(by='vote_average', ascending=False).head(10)
-        if not top_movies.empty:
-            base_url = "https://image.tmdb.org/t/p/w500"
-            top_movies['image_url'] = base_url + top_movies['poster_path']
-            return top_movies[top_movies['image_url'].notna()]
+def filter_top_shows(df, gen, name, over, net):
+    """Filtra y ordena las 10 mejores series según los filtros aplicados"""
+    filtered_shows = df[
+        (df['genres'].str.contains(gen, case=False, na=False)) &
+        (df['original_name'].str.contains(name, case=False, na=False)) &
+        (df['overview'].str.contains(over, case=False, na=False)) &
+        (df['networks'].str.contains(net, case=False, na=False))
+    ]
+    top_shows = filtered_shows.sort_values(by='vote_average', ascending=False).head(10)
+    if not top_shows.empty:
+        base_url = "https://image.tmdb.org/t/p/w500"
+        top_shows['image_url'] = base_url + top_shows['poster_path']
+        return top_shows[top_shows['image_url'].notna()]
     return pd.DataFrame()
 
 # =================== Control de Navegación ===================
 if "page" not in st.session_state:
     st.session_state.page = "home"
     st.session_state.selected_movie = None
-if "search_genre" not in st.session_state:
-    st.session_state.search_genre = ""
 
 def navigate(page, movie=None):
     st.session_state.page = page
@@ -85,50 +88,53 @@ if st.session_state.page == "home":
     df_shows = fetch_data(query_shows)
     df_movies = fetch_data(query_movies)
 
-    genre_input = st.text_input("Introduce el Género:", st.session_state.search_genre)
+    # ========= Filtros de usuario =========
+    st.sidebar.header("Filtros de Búsqueda")
+    genre_input = st.sidebar.text_input("Género", "")
+    title_input = st.sidebar.text_input("Título / Nombre Original", "")
+    overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
+    network_input = st.sidebar.text_input("Network (Solo para series)", "")
+    exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
 
-    if genre_input:
-        st.session_state.search_genre = genre_input
-        top_shows = filter_top_shows(df_shows, genre_input)
-        top_movies = filter_top_movies(df_movies, genre_input)
+    # ========= Aplicar Filtros =========
+    top_shows = filter_top_shows(df_shows, genre_input, title_input, overview_input, network_input)
+    top_movies = filter_top_movies(df_movies, genre_input, title_input, overview_input, not exclude_adult)
 
-        # ========== Mostrar Series ==========
-        st.subheader("Top 10 Series")
-        if not top_shows.empty:
-            cols_per_row = 5
-            cols = st.columns(cols_per_row)
+    # ========== Mostrar Series ==========
+    st.subheader("Top 10 Series")
+    if not top_shows.empty:
+        cols_per_row = 5
+        cols = st.columns(cols_per_row)
 
-            for index, row in enumerate(top_shows.itertuples()):
-                with cols[index % cols_per_row]:
-                    st.image(row.image_url, use_container_width=True)
-                    
-                    first_air_year = str(row.first_air_date)[:4] if hasattr(row, 'first_air_date') and row.first_air_date else "N/A"
-                    
-                    button_label = f"{row.name} ({first_air_year})"
-                    if st.button(button_label, key=f"show_{row.Index}"):
-                        navigate("details", row)
-        else:
-            st.warning("No se encontraron series para el género ingresado.")
-
-        # ========== Mostrar Películas ==========
-        st.subheader("Top 10 Películas")
-        if not top_movies.empty:
-            cols_per_row = 5
-            cols = st.columns(cols_per_row)
-
-            for index, row in enumerate(top_movies.itertuples()):
-                with cols[index % cols_per_row]:
-                    st.image(row.image_url, use_container_width=True)
-                    
-                    release_year = str(row.release_date)[:4] if hasattr(row, 'release_date') and row.release_date else "N/A"
-                    
-                    button_label = f"{row.title} ({release_year})"
-                    if st.button(button_label, key=f"movie_{row.Index}"):
-                        navigate("details", row)
-        else:
-            st.warning("No se encontraron películas para el género ingresado.")
+        for index, row in enumerate(top_shows.itertuples()):
+            with cols[index % cols_per_row]:
+                st.image(row.image_url, use_container_width=True)
+                
+                first_air_year = str(row.first_air_date)[:4] if hasattr(row, 'first_air_date') and row.first_air_date else "N/A"
+                
+                button_label = f"{row.original_name} ({first_air_year})"
+                if st.button(button_label, key=f"show_{row.Index}"):
+                    navigate("details", row)
     else:
-        st.info("Introduce un género para buscar los Top 10 Shows y Películas.")
+        st.warning("No se encontraron series para los filtros aplicados.")
+
+    # ========== Mostrar Películas ==========
+    st.subheader("Top 10 Películas")
+    if not top_movies.empty:
+        cols_per_row = 5
+        cols = st.columns(cols_per_row)
+
+        for index, row in enumerate(top_movies.itertuples()):
+            with cols[index % cols_per_row]:
+                st.image(row.image_url, use_container_width=True)
+                
+                release_year = str(row.release_date)[:4] if hasattr(row, 'release_date') and row.release_date else "N/A"
+                
+                button_label = f"{row.title} ({release_year})"
+                if st.button(button_label, key=f"movie_{row.Index}"):
+                    navigate("details", row)
+    else:
+        st.warning("No se encontraron películas para los filtros aplicados.")
 
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
@@ -148,7 +154,7 @@ elif st.session_state.page == "details":
                 st.warning("No hay imagen disponible.")
 
         with col2:
-            st.markdown(f"# {movie.title if hasattr(movie, 'title') else movie.name} ({str(movie.release_date)[:4] if hasattr(movie, 'release_date') else 'N/A'})")
+            st.markdown(f"# {movie.title if hasattr(movie, 'title') else movie.original_name} ({str(movie.release_date)[:4] if hasattr(movie, 'release_date') else 'N/A'})")
             st.markdown(f"**Rating:** {movie.vote_average:.2f} ⭐ ({movie.vote_count} votos)")
             st.markdown(f"**Idioma original:** {movie.original_language.upper() if hasattr(movie, 'original_language') else 'N/A'}")
             st.markdown(f"**Géneros:** {movie.genres if hasattr(movie, 'genres') else 'No disponible'}")
