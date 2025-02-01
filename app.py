@@ -113,7 +113,6 @@ if st.session_state.page == "home":
                 for i, row in enumerate(movie_data.itertuples()):
                     with cols[i % 2]:  # Alternar entre columnas
                         st.image(f"https://image.tmdb.org/t/p/w500{row.poster_path}" if pd.notna(row.poster_path) else "https://via.placeholder.com/200", width=200)
-                        st.markdown(f"**{row.title}** (Género: {row.genres}, Rating: {row.vote_average})")
                         if st.button(f"Ver detalles de {row.title}", key=f"movie_{row.Index}"):
                             navigate("details", row)
 
