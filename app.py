@@ -49,9 +49,9 @@ def apply_filters(df, title, overview, genre, network=None):
         df = df[df['networks'].str.contains(network, case=False, na=False)]
     return df
 
-def navigate(page, item=None):
+def navigate(page, item):
     st.session_state.page = page
-    st.session_state.selected_item = item
+    st.session_state.selected_item = item  # Guardar el registro seleccionado completo
     st.rerun()
 
 def get_image_url(poster_path):
@@ -147,7 +147,7 @@ if st.session_state.page == "home":
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
     if st.session_state.selected_item:
-        item = st.session_state.selected_item
+        item = st.session_state.selected_item  # Acceder al registro seleccionado
         base_url = "https://image.tmdb.org/t/p/w500"
 
         # Mostrar imagen de fondo
