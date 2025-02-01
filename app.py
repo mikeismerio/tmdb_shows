@@ -92,12 +92,12 @@ elif st.session_state.page == "series":
         """
         show_data = fetch_data(show_query)
 
-        # Aplicar filtros usando str.contains
+        # Aplicar filtros usando str.contains (si los filtros no están vacíos)
         if not show_data.empty:
             show_data = show_data[
-                show_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
-                show_data['original_name'].str.contains(st.session_state.title_input, case=False, na=False) &
-                show_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False)
+                (show_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) if st.session_state.genre_input else True) &
+                (show_data['original_name'].str.contains(st.session_state.title_input, case=False, na=False) if st.session_state.title_input else True) &
+                (show_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False) if st.session_state.overview_input else True)
             ]
 
         # Mostrar resultados de series
@@ -136,12 +136,12 @@ elif st.session_state.page == "movies":
         """
         movie_data = fetch_data(movie_query)
 
-        # Aplicar filtros usando str.contains
+        # Aplicar filtros usando str.contains (si los filtros no están vacíos)
         if not movie_data.empty:
             movie_data = movie_data[
-                movie_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
-                movie_data['title'].str.contains(st.session_state.title_input, case=False, na=False) &
-                movie_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False)
+                (movie_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) if st.session_state.genre_input else True) &
+                (movie_data['title'].str.contains(st.session_state.title_input, case=False, na=False) if st.session_state.title_input else True) &
+                (movie_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False) if st.session_state.overview_input else True)
             ]
             if st.session_state.exclude_adult:
                 movie_data = movie_data[movie_data['adult'] == 0]
@@ -169,7 +169,7 @@ elif st.session_state.page == "details":
         base_url = "https://image.tmdb.org/t/p/w500"
 
         # Mostrar imagen de fondo si está disponible
-        if 'backdrop_path' in item and item['backdrop_path']:
+        if item.get('backdrop_path'):
             st.image(base_url + item['backdrop_path'], use_container_width=True)
 
         # Mostrar detalles en dos columnas
