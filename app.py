@@ -75,8 +75,8 @@ if st.session_state.page == "home":
 
     # ========= Filtros de usuario =========
     st.sidebar.header("Filtros de Búsqueda")
-    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
-    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
+    search_movies = st.sidebar.checkbox("Buscar Películas", value=False)
+    search_shows = st.sidebar.checkbox("Buscar Series", value=False)
 
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
