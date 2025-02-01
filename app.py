@@ -38,7 +38,7 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def build_query(table, genre, title, overview, network=None, limit=50):
+def build_query(table, genre, title, overview, network=None):
     """Construye una consulta SQL dinámica según los filtros seleccionados."""
     conditions = []
     
@@ -53,7 +53,7 @@ def build_query(table, genre, title, overview, network=None, limit=50):
         conditions.append(f"networks LIKE '%{network}%'")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
-    query = f"SELECT * FROM {table} WHERE {where_clause} LIMIT {limit}"
+    query = f"SELECT * FROM {table} WHERE {where_clause}"
     return query
 
 # =================== Página Principal ===================
@@ -79,7 +79,6 @@ if st.session_state.page == "home":
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
     overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
-    limit_input = st.sidebar.slider("Número de resultados", 10, 100, 50)
 
     # Botón para activar la búsqueda
     search_button = st.sidebar.button("Buscar")
@@ -90,7 +89,7 @@ if st.session_state.page == "home":
 
         # ========== Consultas dinámicas ==========
         if search_movies:
-            movie_query = build_query(table_movies, genre_input, title_input, overview_input, limit=limit_input)
+            movie_query = build_query(table_movies, genre_input, title_input, overview_input)
             movie_data = fetch_data(movie_query)
 
             st.subheader("Resultados - Películas")
@@ -103,7 +102,7 @@ if st.session_state.page == "home":
                 st.warning("No se encontraron películas para los filtros seleccionados.")
 
         if search_shows:
-            show_query = build_query(table_shows, genre_input, title_input, overview_input, limit=limit_input)
+            show_query = build_query(table_shows, genre_input, title_input, overview_input)
             show_data = fetch_data(show_query)
 
             st.subheader("Resultados - Series")
@@ -114,4 +113,3 @@ if st.session_state.page == "home":
                         st.image(f"https://image.tmdb.org/t/p/w500{row['poster_path']}", width=200)
             else:
                 st.warning("No se encontraron series para los filtros seleccionados.")
-
