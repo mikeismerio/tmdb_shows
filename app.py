@@ -86,6 +86,18 @@ def navigate(page, movie=None):
     st.session_state.selected_movie = movie
     st.rerun()
 
+# =================== Guardar filtros en el estado de la aplicación ===================
+def update_filters():
+    st.session_state.search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
+    st.session_state.search_shows = st.sidebar.checkbox("Buscar Series", value=True)
+    st.session_state.genre_input = st.sidebar.text_input("Género", "")
+    st.session_state.title_input = st.sidebar.text_input("Título / Nombre Original", "")
+    st.session_state.overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
+
+    # Botón para confirmar los filtros
+    if st.sidebar.button("Buscar"):
+        st.session_state.search_active = True
+
 # =================== Página Principal ===================
 if st.session_state.page == "home":
     query_shows = f"SELECT * FROM {table_shows}"
@@ -94,34 +106,25 @@ if st.session_state.page == "home":
     df_shows = fetch_data(query_shows)
     df_movies = fetch_data(query_movies)
 
-    # ========= Imagen de portada (solo si no se ha hecho búsqueda) =========
+    # ========= Mostrar portada si no hay búsqueda =========
     if "search_active" not in st.session_state or not st.session_state.search_active:
         st.image("https://via.placeholder.com/800x400.png?text=Bienvenido+a+la+Base+de+Películas+y+Series", use_column_width=True)
         st.markdown("## ¡Bienvenido! Usa los filtros de búsqueda para explorar series y películas.")
 
-    # ========= Filtros de usuario =========
-    st.sidebar.header("Filtros de Búsqueda")
-    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
-    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
+    # ========= Actualizar los filtros =========
+    update_filters()
 
-    genre_input = st.sidebar.text_input("Género", "")
-    title_input = st.sidebar.text_input("Título / Nombre Original", "")
-    overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
-
-    # Botón para activar la búsqueda
-    search_button = st.sidebar.button("Buscar")
-
-    # Solo activar la búsqueda si se presiona el botón
-    if search_button:
-        st.session_state.search_active = True
-    elif "search_active" not in st.session_state:
-        st.session_state.search_active = False  # Valor inicial
-
-    # ========= Mostrar resultados solo si se presionó el botón "Buscar" =========
-    if st.session_state.search_active:
-        if search_movies:
+    # ========= Mostrar resultados solo si el usuario ha hecho la búsqueda =========
+    if "search_active" in st.session_state and st.session_state.search_active:
+        if st.session_state.search_movies:
             exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
-            top_movies = filter_top_movies(df_movies, genre_input, title_input, overview_input, not exclude_adult)
+            top_movies = filter_top_movies(
+                df_movies,
+                st.session_state.genre_input,
+                st.session_state.title_input,
+                st.session_state.overview_input,
+                not exclude_adult,
+            )
 
             # ========== Mostrar Películas ==========
             st.subheader("Top 10 Películas")
@@ -141,9 +144,15 @@ if st.session_state.page == "home":
             else:
                 st.warning("No se encontraron películas para los filtros aplicados.")
 
-        if search_shows:
+        if st.session_state.search_shows:
             network_input = st.sidebar.text_input("Network")
-            top_shows = filter_top_shows(df_shows, genre_input, title_input, overview_input, network_input)
+            top_shows = filter_top_shows(
+                df_shows,
+                st.session_state.genre_input,
+                st.session_state.title_input,
+                st.session_state.overview_input,
+                network_input,
+            )
 
             # ========== Mostrar Series ==========
             st.subheader("Top 10 Series")
