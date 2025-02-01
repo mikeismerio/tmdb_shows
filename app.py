@@ -83,11 +83,12 @@ elif st.session_state.page == "series":
     search_button = st.sidebar.button("Buscar Series")
 
     if search_button:
-        # Construir consulta SQL
+        # Consulta SQL optimizada
         show_query = f"""
         SELECT TOP 10 * 
         FROM {table_shows} 
-        ORDER BY weighted_rating DESC
+        WHERE vote_average IS NOT NULL 
+        ORDER BY vote_average DESC
         """
         show_data = fetch_data(show_query)
 
@@ -126,11 +127,12 @@ elif st.session_state.page == "movies":
     search_button = st.sidebar.button("Buscar Películas")
 
     if search_button:
-        # Construir consulta SQL
+        # Consulta SQL optimizada
         movie_query = f"""
         SELECT TOP 10 * 
         FROM {table_movies} 
-        ORDER BY weighted_rating DESC
+        WHERE vote_average IS NOT NULL 
+        ORDER BY vote_average DESC
         """
         movie_data = fetch_data(movie_query)
 
