@@ -23,7 +23,6 @@ connection_string = (
     f"driver={driver}&Authentication=ActiveDirectoryPassword"
 )
 
-@st.cache_data
 def fetch_data(query):
     """Ejecuta una consulta SQL y devuelve un DataFrame"""
     try:
@@ -38,7 +37,7 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def build_query(table, genre, title, overview, network=None):
+def build_query(table, genre, title, overview, network=None, exclude_adult=None):
     """Construye una consulta SQL dinámica según los filtros seleccionados."""
     conditions = []
     
@@ -51,6 +50,8 @@ def build_query(table, genre, title, overview, network=None):
         conditions.append(f"overview LIKE '%{overview}%'")
     if network and table == table_shows:
         conditions.append(f"networks LIKE '%{network}%'")
+    if exclude_adult is not None and table == table_movies:
+        conditions.append(f"adult = {str(exclude_adult).lower()}")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
     query = f"SELECT * FROM {table} WHERE {where_clause}"
@@ -80,6 +81,16 @@ if st.session_state.page == "home":
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
     overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
 
+    # Mostrar campos adicionales según el tipo de búsqueda
+    exclude_adult = None
+    network_input = None
+
+    if search_movies:
+        exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
+
+    if search_shows:
+        network_input = st.sidebar.text_input("Network (Para series)")
+
     # Botón para activar la búsqueda
     search_button = st.sidebar.button("Buscar")
 
@@ -89,7 +100,7 @@ if st.session_state.page == "home":
 
         # ========== Consultas dinámicas ==========
         if search_movies:
-            movie_query = build_query(table_movies, genre_input, title_input, overview_input)
+            movie_query = build_query(table_movies, genre_input, title_input, overview_input, exclude_adult=exclude_adult)
             movie_data = fetch_data(movie_query)
 
             st.subheader("Resultados - Películas")
@@ -102,7 +113,7 @@ if st.session_state.page == "home":
                 st.warning("No se encontraron películas para los filtros seleccionados.")
 
         if search_shows:
-            show_query = build_query(table_shows, genre_input, title_input, overview_input)
+            show_query = build_query(table_shows, genre_input, title_input, overview_input, network=network_input)
             show_data = fetch_data(show_query)
 
             st.subheader("Resultados - Series")
