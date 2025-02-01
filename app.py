@@ -37,12 +37,10 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def build_query(table, genre, title, overview, network=None, exclude_adult=None):
+def build_query(table, title, overview, network=None, exclude_adult=None):
     """Construye una consulta SQL dinámica según los filtros seleccionados."""
     conditions = []
     
-    if genre.strip():
-        conditions.append(f"genres LIKE '%{genre}%'")
     if title.strip():
         conditions.append(f"(title LIKE '%{title}%' OR original_name LIKE '%{title}%')")  # Para películas y series
     if overview.strip():
@@ -100,8 +98,14 @@ if st.session_state.page == "home":
 
         # ========== Consultas dinámicas ==========
         if search_movies:
-            movie_query = build_query(table_movies, genre_input, title_input, overview_input, exclude_adult=exclude_adult)
-            movie_data = fetch_data(movie_query).head(10)  # Traer solo los primeros 10 resultados
+            movie_query = build_query(table_movies, title_input, overview_input, exclude_adult=exclude_adult)
+            movie_data = fetch_data(movie_query)
+
+            # Filtrar por género usando str.contains()
+            if genre_input.strip():
+                movie_data = movie_data[movie_data['genres'].str.contains(genre_input, case=False, na=False)]
+
+            movie_data = movie_data.head(10)  # Limitar a los primeros 10 resultados
 
             st.subheader("Resultados - Películas")
             if not movie_data.empty:
@@ -117,8 +121,14 @@ if st.session_state.page == "home":
                 st.warning("No se encontraron películas para los filtros seleccionados.")
 
         if search_shows:
-            show_query = build_query(table_shows, genre_input, title_input, overview_input, network=network_input)
-            show_data = fetch_data(show_query).head(10)  # Traer solo los primeros 10 resultados
+            show_query = build_query(table_shows, title_input, overview_input, network=network_input)
+            show_data = fetch_data(show_query)
+
+            # Filtrar por género usando str.contains()
+            if genre_input.strip():
+                show_data = show_data[show_data['genres'].str.contains(genre_input, case=False, na=False)]
+
+            show_data = show_data.head(10)  # Limitar a los primeros 10 resultados
 
             st.subheader("Resultados - Series")
             if not show_data.empty:
@@ -132,23 +142,3 @@ if st.session_state.page == "home":
 
             else:
                 st.warning("No se encontraron series para los filtros seleccionados.")
-
-# =================== Página de Detalles ===================
-elif st.session_state.page == "details":
-    if st.session_state.selected_item:
-        item = st.session_state.selected_item
-        base_url = "https://image.tmdb.org/t/p/w500"
-
-        # Mostrar imagen de fondo
-        if hasattr(item, 'backdrop_path') and item.backdrop_path:
-            st.image(base_url + item.backdrop_path, use_column_width=True)
-
-        # Información detallada
-        st.markdown(f"## {item.title if hasattr(item, 'title') else item.original_name}")
-        st.markdown(f"**Rating:** {item.vote_average} ⭐ ({item.vote_count} votos)")
-        st.markdown(f"**Géneros:** {item.genres}")
-        st.markdown(f"**Descripción:** {item.overview if pd.notna(item.overview) else 'No disponible'}")
-
-        # Botón para regresar a la lista
-        if st.button("Volver a la lista"):
-            navigate("home")
