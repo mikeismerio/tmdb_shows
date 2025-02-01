@@ -37,32 +37,26 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def build_query(table, title, overview, network=None, exclude_adult=None):
-    """Construye una consulta SQL dinámica según los filtros seleccionados."""
-    conditions = []
-    
+def apply_filters(df, title, overview, genre, network=None):
+    """Aplica filtros usando str.contains en el DataFrame."""
     if title.strip():
-        conditions.append(f"(title LIKE '%{title}%' OR original_name LIKE '%{title}%')")  # Para películas y series
+        df = df[df['title'].str.contains(title, case=False, na=False) | df['original_name'].str.contains(title, case=False, na=False)]
     if overview.strip():
-        conditions.append(f"overview LIKE '%{overview}%'")
-    if network and table == table_shows:
-        conditions.append(f"networks LIKE '%{network}%'")
-    if exclude_adult is not None and table == table_movies:
-        # Convertimos el booleano a 0 o 1 para SQL Server
-        conditions.append(f"adult = {0 if exclude_adult else 1}")
-
-    where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
-    query = f"SELECT * FROM {table} WHERE {where_clause} ORDER BY vote_average DESC"
-    return query
-
-# =================== Página Principal ===================
-if "page" not in st.session_state:
-    st.session_state.page = "home"
+        df = df[df['overview'].str.contains(overview, case=False, na=False)]
+    if genre.strip():
+        df = df[df['genres'].str.contains(genre, case=False, na=False)]
+    if network and 'networks' in df.columns:
+        df = df[df['networks'].str.contains(network, case=False, na=False)]
+    return df
 
 def navigate(page, item=None):
     st.session_state.page = page
     st.session_state.selected_item = item
     st.rerun()
+
+# =================== Página Principal ===================
+if "page" not in st.session_state:
+    st.session_state.page = "home"
 
 if st.session_state.page == "home":
     # ========= Mostrar portada si no hay búsqueda =========
@@ -78,16 +72,15 @@ if st.session_state.page == "home":
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
     overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
-
-    # Mostrar campos adicionales según el tipo de búsqueda
-    exclude_adult = None
     network_input = None
-
-    if search_movies:
-        exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
 
     if search_shows:
         network_input = st.sidebar.text_input("Network (Para series)")
+
+    # Mostrar campo adicional para excluir contenido adulto solo si se busca películas
+    exclude_adult = None
+    if search_movies:
+        exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
 
     # Botón para activar la búsqueda
     search_button = st.sidebar.button("Buscar")
@@ -98,12 +91,15 @@ if st.session_state.page == "home":
 
         # ========== Consultas dinámicas ==========
         if search_movies:
-            movie_query = build_query(table_movies, title_input, overview_input, exclude_adult=exclude_adult)
+            movie_query = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
             movie_data = fetch_data(movie_query)
 
-            # Filtrar por género usando str.contains()
-            if genre_input.strip():
-                movie_data = movie_data[movie_data['genres'].str.contains(genre_input, case=False, na=False)]
+            # Aplicar filtro de contenido adulto si es necesario
+            if exclude_adult is not None:
+                movie_data = movie_data[movie_data['adult'] == (0 if exclude_adult else 1)]
+
+            # Aplicar filtros usando str.contains()
+            movie_data = apply_filters(movie_data, title_input, overview_input, genre_input)
 
             movie_data = movie_data.head(10)  # Limitar a los primeros 10 resultados
 
@@ -111,21 +107,20 @@ if st.session_state.page == "home":
             if not movie_data.empty:
                 cols = st.columns(2)  # Mostrar en 2 columnas
                 for i, row in enumerate(movie_data.itertuples()):
+                    year = str(row.release_date)[:4] if pd.notna(row.release_date) else "N/A"
                     with cols[i % 2]:  # Alternar entre columnas
-                        st.image(f"https://image.tmdb.org/t/p/w500{row.poster_path}" if pd.notna(row.poster_path) else "https://via.placeholder.com/200", width=200)
-                        if st.button(f"Ver detalles de {row.title}", key=f"movie_{row.Index}"):
+                        if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
                             navigate("details", row)
 
             else:
                 st.warning("No se encontraron películas para los filtros seleccionados.")
 
         if search_shows:
-            show_query = build_query(table_shows, title_input, overview_input, network=network_input)
+            show_query = f"SELECT * FROM {table_shows} ORDER BY vote_average DESC"
             show_data = fetch_data(show_query)
 
-            # Filtrar por género usando str.contains()
-            if genre_input.strip():
-                show_data = show_data[show_data['genres'].str.contains(genre_input, case=False, na=False)]
+            # Aplicar filtros usando str.contains()
+            show_data = apply_filters(show_data, title_input, overview_input, genre_input, network=network_input)
 
             show_data = show_data.head(10)  # Limitar a los primeros 10 resultados
 
@@ -133,11 +128,30 @@ if st.session_state.page == "home":
             if not show_data.empty:
                 cols = st.columns(2)  # Mostrar en 2 columnas
                 for i, row in enumerate(show_data.itertuples()):
+                    year = str(row.first_air_date)[:4] if pd.notna(row.first_air_date) else "N/A"
                     with cols[i % 2]:  # Alternar entre columnas
-                        st.image(f"https://image.tmdb.org/t/p/w500{row.poster_path}" if pd.notna(row.poster_path) else "https://via.placeholder.com/200", width=200)
-                        st.markdown(f"**{row.original_name}** (Género: {row.genres}, Rating: {row.vote_average})")
-                        if st.button(f"Ver detalles de {row.original_name}", key=f"show_{row.Index}"):
+                        if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
                             navigate("details", row)
 
             else:
                 st.warning("No se encontraron series para los filtros seleccionados.")
+
+# =================== Página de Detalles ===================
+elif st.session_state.page == "details":
+    if st.session_state.selected_item:
+        item = st.session_state.selected_item
+        base_url = "https://image.tmdb.org/t/p/w500"
+
+        # Mostrar imagen de fondo
+        if hasattr(item, 'backdrop_path') and item.backdrop_path:
+            st.image(base_url + item.backdrop_path, use_column_width=True)
+
+        # Información detallada
+        st.markdown(f"## {item.title if hasattr(item, 'title') else item.original_name}")
+        st.markdown(f"**Rating:** {item.vote_average} ⭐ ({item.vote_count} votos)")
+        st.markdown(f"**Géneros:** {item.genres}")
+        st.markdown(f"**Descripción:** {item.overview if pd.notna(item.overview) else 'No disponible'}")
+
+        # Botón para regresar a la lista
+        if st.button("Volver a la lista"):
+            navigate("home")
