@@ -38,170 +38,80 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def apply_filter(df, column, keyword):
-    """Aplica el filtro solo si el keyword no está vacío"""
-    if keyword.strip():
-        return df[column].str.contains(keyword, case=False, na=False)
-    return pd.Series([True] * len(df))  # No filtrar si el campo está vacío
+def build_query(table, genre, title, overview, network=None, limit=50):
+    """Construye una consulta SQL dinámica según los filtros seleccionados."""
+    conditions = []
+    
+    if genre:
+        conditions.append(f"genres LIKE '%{genre}%'")
+    if title:
+        conditions.append(f"title LIKE '%{title}%'")  # Para películas
+        conditions.append(f"original_name LIKE '%{title}%'")  # Para series
+    if overview:
+        conditions.append(f"overview LIKE '%{overview}%'")
+    if network and table == table_shows:
+        conditions.append(f"networks LIKE '%{network}%'")
 
-@st.cache_data
-def filter_top_movies(df, gen, title, over, adlt):
-    """Filtra y ordena las 10 mejores películas según los filtros aplicados"""
-    filtered_movies = df[
-        apply_filter(df, 'genres', gen) &
-        apply_filter(df, 'title', title) &
-        apply_filter(df, 'overview', over) &
-        (df['adult'] == adlt)
-    ]
-    top_movies = filtered_movies.sort_values(by='vote_average', ascending=False).head(10)
-    if not top_movies.empty:
-        base_url = "https://image.tmdb.org/t/p/w500"
-        top_movies['image_url'] = base_url + top_movies['poster_path']
-        return top_movies[top_movies['image_url'].notna()]
-    return pd.DataFrame()
+    where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
+    query = f"SELECT * FROM {table} WHERE {where_clause} LIMIT {limit}"
+    return query
 
-@st.cache_data
-def filter_top_shows(df, gen, name, over, net):
-    """Filtra y ordena las 10 mejores series según los filtros aplicados"""
-    filtered_shows = df[
-        apply_filter(df, 'genres', gen) &
-        apply_filter(df, 'original_name', name) &
-        apply_filter(df, 'overview', over) &
-        apply_filter(df, 'networks', net)
-    ]
-    top_shows = filtered_shows.sort_values(by='vote_average', ascending=False).head(10)
-    if not top_shows.empty:
-        base_url = "https://image.tmdb.org/t/p/w500"
-        top_shows['image_url'] = base_url + top_shows['poster_path']
-        return top_shows[top_shows['image_url'].notna()]
-    return pd.DataFrame()
-
-# =================== Control de Navegación ===================
+# =================== Página Principal ===================
 if "page" not in st.session_state:
     st.session_state.page = "home"
-    st.session_state.selected_movie = None
 
 def navigate(page, movie=None):
     st.session_state.page = page
     st.session_state.selected_movie = movie
     st.rerun()
 
-# =================== Guardar filtros en el estado de la aplicación ===================
-def update_filters():
-    st.session_state.search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
-    st.session_state.search_shows = st.sidebar.checkbox("Buscar Series", value=True)
-    st.session_state.genre_input = st.sidebar.text_input("Género", "")
-    st.session_state.title_input = st.sidebar.text_input("Título / Nombre Original", "")
-    st.session_state.overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
-
-    # Botón para confirmar los filtros
-    if st.sidebar.button("Buscar"):
-        st.session_state.search_active = True
-
-# =================== Página Principal ===================
 if st.session_state.page == "home":
-    query_shows = f"SELECT * FROM {table_shows}"
-    query_movies = f"SELECT * FROM {table_movies}"
-    
-    df_shows = fetch_data(query_shows)
-    df_movies = fetch_data(query_movies)
-
     # ========= Mostrar portada si no hay búsqueda =========
     if "search_active" not in st.session_state or not st.session_state.search_active:
-        st.image("https://via.placeholder.com/800x400.png?text=Bienvenido+a+la+Base+de+Películas+y+Series", use_column_width=True)
+        st.image("https://via.placeholder.com/800x400.png?text=Bienvenido+a+la+Base+de+Pel%C3%ADculas+y+Series", use_column_width=True)
         st.markdown("## ¡Bienvenido! Usa los filtros de búsqueda para explorar series y películas.")
 
-    # ========= Actualizar los filtros =========
-    update_filters()
+    # ========= Filtros de usuario =========
+    st.sidebar.header("Filtros de Búsqueda")
+    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
+    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
 
-    # ========= Mostrar resultados solo si el usuario ha hecho la búsqueda =========
-    if "search_active" in st.session_state and st.session_state.search_active:
-        if st.session_state.search_movies:
-            exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
-            top_movies = filter_top_movies(
-                df_movies,
-                st.session_state.genre_input,
-                st.session_state.title_input,
-                st.session_state.overview_input,
-                not exclude_adult,
-            )
+    genre_input = st.sidebar.text_input("Género", "")
+    title_input = st.sidebar.text_input("Título / Nombre Original", "")
+    overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
+    limit_input = st.sidebar.slider("Número de resultados", 10, 100, 50)
 
-            # ========== Mostrar Películas ==========
-            st.subheader("Top 10 Películas")
-            if not top_movies.empty:
-                cols_per_row = 5
-                cols = st.columns(cols_per_row)
+    # Botón para activar la búsqueda
+    search_button = st.sidebar.button("Buscar")
 
-                for index, row in enumerate(top_movies.itertuples()):
-                    with cols[index % cols_per_row]:
-                        st.image(row.image_url, use_container_width=True)
-                        
-                        release_year = str(row.release_date)[:4] if hasattr(row, 'release_date') and row.release_date else "N/A"
-                        
-                        button_label = f"{row.title} ({release_year})"
-                        if st.button(button_label, key=f"movie_{row.Index}"):
-                            navigate("details", row)
+    # Si se presiona "Buscar", construir consultas y traer datos
+    if search_button:
+        st.session_state.search_active = True
+
+        # ========== Consultas dinámicas ==========
+        if search_movies:
+            movie_query = build_query(table_movies, genre_input, title_input, overview_input, limit=limit_input)
+            movie_data = fetch_data(movie_query)
+
+            st.subheader("Resultados - Películas")
+            if not movie_data.empty:
+                for _, row in movie_data.iterrows():
+                    st.markdown(f"**{row['title']}** (Género: {row['genres']}, Rating: {row['vote_average']})")
+                    if pd.notna(row['poster_path']):
+                        st.image(f"https://image.tmdb.org/t/p/w500{row['poster_path']}", width=200)
             else:
-                st.warning("No se encontraron películas para los filtros aplicados.")
+                st.warning("No se encontraron películas para los filtros seleccionados.")
 
-        if st.session_state.search_shows:
-            network_input = st.sidebar.text_input("Network")
-            top_shows = filter_top_shows(
-                df_shows,
-                st.session_state.genre_input,
-                st.session_state.title_input,
-                st.session_state.overview_input,
-                network_input,
-            )
+        if search_shows:
+            show_query = build_query(table_shows, genre_input, title_input, overview_input, limit=limit_input)
+            show_data = fetch_data(show_query)
 
-            # ========== Mostrar Series ==========
-            st.subheader("Top 10 Series")
-            if not top_shows.empty:
-                cols_per_row = 5
-                cols = st.columns(cols_per_row)
-
-                for index, row in enumerate(top_shows.itertuples()):
-                    with cols[index % cols_per_row]:
-                        st.image(row.image_url, use_container_width=True)
-                        
-                        first_air_year = str(row.first_air_date)[:4] if hasattr(row, 'first_air_date') and row.first_air_date else "N/A"
-                        
-                        button_label = f"{row.original_name} ({first_air_year})"
-                        if st.button(button_label, key=f"show_{row.Index}"):
-                            navigate("details", row)
+            st.subheader("Resultados - Series")
+            if not show_data.empty:
+                for _, row in show_data.iterrows():
+                    st.markdown(f"**{row['original_name']}** (Género: {row['genres']}, Rating: {row['vote_average']})")
+                    if pd.notna(row['poster_path']):
+                        st.image(f"https://image.tmdb.org/t/p/w500{row['poster_path']}", width=200)
             else:
-                st.warning("No se encontraron series para los filtros aplicados.")
+                st.warning("No se encontraron series para los filtros seleccionados.")
 
-# =================== Página de Detalles ===================
-elif st.session_state.page == "details":
-    if st.session_state.selected_movie:
-        movie = st.session_state.selected_movie
-        base_url = "https://image.tmdb.org/t/p/w500"
-
-        if hasattr(movie, 'backdrop_path') and movie.backdrop_path:
-            st.image(base_url + movie.backdrop_path, use_column_width=True)
-
-        col1, col2 = st.columns([1, 2])
-
-        with col1:
-            if hasattr(movie, 'poster_path') and movie.poster_path:
-                st.image(base_url + movie.poster_path, width=250)
-            else:
-                st.warning("No hay imagen disponible.")
-
-        with col2:
-            st.markdown(f"# {movie.title if hasattr(movie, 'title') else movie.original_name} ({str(movie.release_date)[:4] if hasattr(movie, 'release_date') else 'N/A'})")
-            st.markdown(f"**Rating:** {movie.vote_average:.2f} ⭐ ({movie.vote_count} votos)")
-            st.markdown(f"**Idioma original:** {movie.original_language.upper() if hasattr(movie, 'original_language') else 'N/A'}")
-            st.markdown(f"**Géneros:** {movie.genres if hasattr(movie, 'genres') else 'No disponible'}")
-            st.markdown(f"### Descripción")
-            st.markdown(movie.overview if hasattr(movie, 'overview') and movie.overview else "No disponible")
-
-        st.markdown("---")
-
-        if st.button("Volver a la lista"):
-            navigate("home")
-    else:
-        st.warning("No se ha seleccionado ninguna serie o película.")
-        if st.button("Volver a la lista"):
-            navigate("home")
