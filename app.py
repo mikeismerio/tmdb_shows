@@ -61,8 +61,8 @@ if "exclude_adult" not in st.session_state:
 
 # =================== Página Principal ===================
 if st.session_state.page == "home":
-    # Mostrar imagen de portada
-    st.image(PORTADA_URL, use_column_width=True)
+    # Mostrar imagen de portada solo en la página principal
+    st.image(PORTADA_URL, use_container_width=True)
     st.markdown("## ¡Bienvenido! Usa los filtros de búsqueda para explorar series y películas.")
 
     # Filtros de búsqueda en la barra lateral
@@ -140,7 +140,7 @@ elif st.session_state.page == "details":
 
         # Mostrar imagen de fondo si está disponible
         if 'backdrop_path' in item and item['backdrop_path']:
-            st.image(base_url + item['backdrop_path'], use_column_width=True)
+            st.image(base_url + item['backdrop_path'], use_container_width=True)
 
         # Mostrar detalles en dos columnas
         col1, col2 = st.columns([1, 2])
