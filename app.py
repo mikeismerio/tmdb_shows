@@ -37,7 +37,7 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def build_query(table, genre, title, overview, network=None, exclude_adult=None):
+def build_query(table, genre, title, overview, network=None, exclude_adult=None, limit=10):
     """Construye una consulta SQL dinámica según los filtros seleccionados."""
     conditions = []
     
@@ -55,16 +55,16 @@ def build_query(table, genre, title, overview, network=None, exclude_adult=None)
         conditions.append(f"adult = {0 if exclude_adult else 1}")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
-    query = f"SELECT * FROM {table} WHERE {where_clause}"
+    query = f"SELECT TOP {limit} * FROM {table} WHERE {where_clause}"
     return query
 
 # =================== Página Principal ===================
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-def navigate(page, movie=None):
+def navigate(page, item=None):
     st.session_state.page = page
-    st.session_state.selected_movie = movie
+    st.session_state.selected_item = item
     st.rerun()
 
 if st.session_state.page == "home":
@@ -75,8 +75,8 @@ if st.session_state.page == "home":
 
     # ========= Filtros de usuario =========
     st.sidebar.header("Filtros de Búsqueda")
-    search_movies = st.sidebar.checkbox("Buscar Películas", value=False)
-    search_shows = st.sidebar.checkbox("Buscar Series", value=False)
+    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
+    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
 
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
@@ -106,10 +106,14 @@ if st.session_state.page == "home":
 
             st.subheader("Resultados - Películas")
             if not movie_data.empty:
-                for _, row in movie_data.iterrows():
-                    st.markdown(f"**{row['title']}** (Género: {row['genres']}, Rating: {row['vote_average']})")
-                    if pd.notna(row['poster_path']):
-                        st.image(f"https://image.tmdb.org/t/p/w500{row['poster_path']}", width=200)
+                cols = st.columns(2)  # Mostrar en 2 columnas
+                for i, row in enumerate(movie_data.itertuples()):
+                    with cols[i % 2]:  # Alternar entre columnas
+                        st.image(f"https://image.tmdb.org/t/p/w500{row.poster_path}" if pd.notna(row.poster_path) else "https://via.placeholder.com/200", width=200)
+                        st.markdown(f"**{row.title}** (Género: {row.genres}, Rating: {row.vote_average})")
+                        if st.button(f"Ver detalles de {row.title}", key=f"movie_{row.Index}"):
+                            navigate("details", row)
+
             else:
                 st.warning("No se encontraron películas para los filtros seleccionados.")
 
@@ -119,9 +123,33 @@ if st.session_state.page == "home":
 
             st.subheader("Resultados - Series")
             if not show_data.empty:
-                for _, row in show_data.iterrows():
-                    st.markdown(f"**{row['original_name']}** (Género: {row['genres']}, Rating: {row['vote_average']})")
-                    if pd.notna(row['poster_path']):
-                        st.image(f"https://image.tmdb.org/t/p/w500{row['poster_path']}", width=200)
+                cols = st.columns(2)  # Mostrar en 2 columnas
+                for i, row in enumerate(show_data.itertuples()):
+                    with cols[i % 2]:  # Alternar entre columnas
+                        st.image(f"https://image.tmdb.org/t/p/w500{row.poster_path}" if pd.notna(row.poster_path) else "https://via.placeholder.com/200", width=200)
+                        st.markdown(f"**{row.original_name}** (Género: {row.genres}, Rating: {row.vote_average})")
+                        if st.button(f"Ver detalles de {row.original_name}", key=f"show_{row.Index}"):
+                            navigate("details", row)
+
             else:
                 st.warning("No se encontraron series para los filtros seleccionados.")
+
+# =================== Página de Detalles ===================
+elif st.session_state.page == "details":
+    if st.session_state.selected_item:
+        item = st.session_state.selected_item
+        base_url = "https://image.tmdb.org/t/p/w500"
+
+        # Mostrar imagen de fondo
+        if hasattr(item, 'backdrop_path') and item.backdrop_path:
+            st.image(base_url + item.backdrop_path, use_column_width=True)
+
+        # Información detallada
+        st.markdown(f"## {item.title if hasattr(item, 'title') else item.original_name}")
+        st.markdown(f"**Rating:** {item.vote_average} ⭐ ({item.vote_count} votos)")
+        st.markdown(f"**Géneros:** {item.genres}")
+        st.markdown(f"**Descripción:** {item.overview if pd.notna(item.overview) else 'No disponible'}")
+
+        # Botón para regresar a la lista
+        if st.button("Volver a la lista"):
+            navigate("home")
