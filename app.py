@@ -38,13 +38,19 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
+def apply_filter(df, column, keyword):
+    """Aplica el filtro solo si el keyword no está vacío"""
+    if keyword.strip():
+        return df[column].str.contains(keyword, case=False, na=False)
+    return pd.Series([True] * len(df))  # No filtrar si el campo está vacío
+
 @st.cache_data
 def filter_top_movies(df, gen, title, over, adlt):
     """Filtra y ordena las 10 mejores películas según los filtros aplicados"""
     filtered_movies = df[
-        (df['genres'].str.contains(gen, case=False, na=False)) &
-        (df['title'].str.contains(title, case=False, na=False)) &
-        (df['overview'].str.contains(over, case=False, na=False)) &
+        apply_filter(df, 'genres', gen) &
+        apply_filter(df, 'title', title) &
+        apply_filter(df, 'overview', over) &
         (df['adult'] == adlt)
     ]
     top_movies = filtered_movies.sort_values(by='vote_average', ascending=False).head(10)
@@ -58,10 +64,10 @@ def filter_top_movies(df, gen, title, over, adlt):
 def filter_top_shows(df, gen, name, over, net):
     """Filtra y ordena las 10 mejores series según los filtros aplicados"""
     filtered_shows = df[
-        (df['genres'].str.contains(gen, case=False, na=False)) &
-        (df['original_name'].str.contains(name, case=False, na=False)) &
-        (df['overview'].str.contains(over, case=False, na=False)) &
-        (df['networks'].str.contains(net, case=False, na=False))
+        apply_filter(df, 'genres', gen) &
+        apply_filter(df, 'original_name', name) &
+        apply_filter(df, 'overview', over) &
+        apply_filter(df, 'networks', net)
     ]
     top_shows = filtered_shows.sort_values(by='vote_average', ascending=False).head(10)
     if not top_shows.empty:
