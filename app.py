@@ -52,9 +52,12 @@ def filter_top_shows(df, genre):
 
 @st.cache_data
 def filter_top_movies(df, genre):
-    """Filtra y ordena las 10 mejores películas según el género"""
+    """Filtra y ordena las 10 mejores películas según el género, excluyendo las de contenido adulto"""
     if genre:
-        filtered_movies = df[df['genres'].str.contains(genre, case=False, na=False)]
+        filtered_movies = df[
+            (df['genres'].str.contains(genre, case=False, na=False)) & 
+            (df['adult'] == False)  # Excluir películas con contenido adulto
+        ]
         top_movies = filtered_movies.sort_values(by='vote_average', ascending=False).head(10)
         if not top_movies.empty:
             base_url = "https://image.tmdb.org/t/p/w500"
