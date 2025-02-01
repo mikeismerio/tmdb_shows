@@ -108,53 +108,60 @@ if st.session_state.page == "home":
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
     overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
 
-    # Control para marcar búsqueda activa
-    st.session_state.search_active = search_movies or search_shows
+    # Botón para activar la búsqueda
+    search_button = st.sidebar.button("Buscar")
 
-    # ========= Buscar y mostrar resultados =========
-    if search_movies:
-        exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
-        top_movies = filter_top_movies(df_movies, genre_input, title_input, overview_input, not exclude_adult)
+    # Solo activar la búsqueda si se presiona el botón
+    if search_button:
+        st.session_state.search_active = True
+    elif "search_active" not in st.session_state:
+        st.session_state.search_active = False  # Valor inicial
 
-        # ========== Mostrar Películas ==========
-        st.subheader("Top 10 Películas")
-        if not top_movies.empty:
-            cols_per_row = 5
-            cols = st.columns(cols_per_row)
+    # ========= Mostrar resultados solo si se presionó el botón "Buscar" =========
+    if st.session_state.search_active:
+        if search_movies:
+            exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
+            top_movies = filter_top_movies(df_movies, genre_input, title_input, overview_input, not exclude_adult)
 
-            for index, row in enumerate(top_movies.itertuples()):
-                with cols[index % cols_per_row]:
-                    st.image(row.image_url, use_container_width=True)
-                    
-                    release_year = str(row.release_date)[:4] if hasattr(row, 'release_date') and row.release_date else "N/A"
-                    
-                    button_label = f"{row.title} ({release_year})"
-                    if st.button(button_label, key=f"movie_{row.Index}"):
-                        navigate("details", row)
-        else:
-            st.warning("No se encontraron películas para los filtros aplicados.")
+            # ========== Mostrar Películas ==========
+            st.subheader("Top 10 Películas")
+            if not top_movies.empty:
+                cols_per_row = 5
+                cols = st.columns(cols_per_row)
 
-    if search_shows:
-        network_input = st.sidebar.text_input("Network")
-        top_shows = filter_top_shows(df_shows, genre_input, title_input, overview_input, network_input)
+                for index, row in enumerate(top_movies.itertuples()):
+                    with cols[index % cols_per_row]:
+                        st.image(row.image_url, use_container_width=True)
+                        
+                        release_year = str(row.release_date)[:4] if hasattr(row, 'release_date') and row.release_date else "N/A"
+                        
+                        button_label = f"{row.title} ({release_year})"
+                        if st.button(button_label, key=f"movie_{row.Index}"):
+                            navigate("details", row)
+            else:
+                st.warning("No se encontraron películas para los filtros aplicados.")
 
-        # ========== Mostrar Series ==========
-        st.subheader("Top 10 Series")
-        if not top_shows.empty:
-            cols_per_row = 5
-            cols = st.columns(cols_per_row)
+        if search_shows:
+            network_input = st.sidebar.text_input("Network")
+            top_shows = filter_top_shows(df_shows, genre_input, title_input, overview_input, network_input)
 
-            for index, row in enumerate(top_shows.itertuples()):
-                with cols[index % cols_per_row]:
-                    st.image(row.image_url, use_container_width=True)
-                    
-                    first_air_year = str(row.first_air_date)[:4] if hasattr(row, 'first_air_date') and row.first_air_date else "N/A"
-                    
-                    button_label = f"{row.original_name} ({first_air_year})"
-                    if st.button(button_label, key=f"show_{row.Index}"):
-                        navigate("details", row)
-        else:
-            st.warning("No se encontraron series para los filtros aplicados.")
+            # ========== Mostrar Series ==========
+            st.subheader("Top 10 Series")
+            if not top_shows.empty:
+                cols_per_row = 5
+                cols = st.columns(cols_per_row)
+
+                for index, row in enumerate(top_shows.itertuples()):
+                    with cols[index % cols_per_row]:
+                        st.image(row.image_url, use_container_width=True)
+                        
+                        first_air_year = str(row.first_air_date)[:4] if hasattr(row, 'first_air_date') and row.first_air_date else "N/A"
+                        
+                        button_label = f"{row.original_name} ({first_air_year})"
+                        if st.button(button_label, key=f"show_{row.Index}"):
+                            navigate("details", row)
+            else:
+                st.warning("No se encontraron series para los filtros aplicados.")
 
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
