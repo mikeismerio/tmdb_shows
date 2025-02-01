@@ -6,6 +6,9 @@ import pandas as pd
 # =================== Configurar Página con Wide Mode ===================
 st.set_page_config(page_title="Inicio", page_icon="🏠", layout="wide")
 
+# =================== Imagen de portada ===================
+PORTADA_URL = "https://raw.githubusercontent.com/usuario/repositorio/rama/home.jpg"
+
 # =================== Configuración de Base de Datos ===================
 server = "nwn7f7ze6vtuxen5age454nhca-colrz4odas5unhn7cagatohexq.datawarehouse.fabric.microsoft.com"
 database = "TMDB"
@@ -24,7 +27,7 @@ connection_string = (
 )
 
 def fetch_data(query):
-    """Ejecuta una consulta SQL y devuelve un DataFrame."""
+    """Ejecuta una consulta SQL y devuelve un DataFrame"""
     try:
         engine = sa.create_engine(connection_string, echo=False, connect_args={"autocommit": True})
         with engine.connect() as conn:
@@ -50,6 +53,10 @@ if "page" not in st.session_state:
 
 # =================== Página Principal ===================
 if st.session_state.page == "home":
+    # Mostrar imagen de portada
+    st.image(PORTADA_URL, use_column_width=True)
+    st.markdown("## ¡Bienvenido! Usa los filtros de búsqueda para explorar series y películas.")
+
     st.sidebar.header("Filtros de Búsqueda")
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
