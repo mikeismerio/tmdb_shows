@@ -50,8 +50,9 @@ def apply_filters(df, title, overview, genre, network=None):
     return df
 
 def navigate(page, item):
+    """Guarda el registro seleccionado y navega a la página de detalles."""
     st.session_state.page = page
-    st.session_state.selected_item = item  # Guardar el registro seleccionado completo
+    st.session_state.selected_item = item  # Guardar el registro completo como diccionario
     st.rerun()
 
 def get_image_url(poster_path):
@@ -117,7 +118,7 @@ if st.session_state.page == "home":
                     with cols[i % 2]:  # Alternar entre columnas
                         st.image(get_image_url(row.poster_path), width=200)
                         if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
-                            navigate("details", row._asdict())  # Pasar datos como diccionario
+                            navigate("details", row._asdict())  # Pasar el registro como diccionario
 
             else:
                 st.warning("No se encontraron películas para los filtros seleccionados.")
@@ -139,7 +140,7 @@ if st.session_state.page == "home":
                     with cols[i % 2]:  # Alternar entre columnas
                         st.image(get_image_url(row.poster_path), width=200)
                         if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
-                            navigate("details", row._asdict())  # Pasar datos como diccionario
+                            navigate("details", row._asdict())  # Pasar el registro como diccionario
 
             else:
                 st.warning("No se encontraron series para los filtros seleccionados.")
@@ -150,15 +151,15 @@ elif st.session_state.page == "details":
         item = st.session_state.selected_item  # Acceder al registro seleccionado
         base_url = "https://image.tmdb.org/t/p/w500"
 
-        # Mostrar imagen de fondo
+        # Mostrar imagen de fondo si está disponible
         if 'backdrop_path' in item and item['backdrop_path']:
             st.image(base_url + item['backdrop_path'], use_column_width=True)
 
-        # Información detallada
-        st.markdown(f"## {item['title'] if 'title' in item else item['original_name']}")
+        # Mostrar detalles del show o película
+        st.markdown(f"## {item.get('title', item.get('original_name', 'Desconocido'))}")
         st.markdown(f"**Rating:** {item['vote_average']} ⭐ ({item['vote_count']} votos)")
-        st.markdown(f"**Géneros:** {item['genres']}")
-        st.markdown(f"**Descripción:** {item['overview'] if pd.notna(item['overview']) else 'No disponible'}")
+        st.markdown(f"**Géneros:** {item.get('genres', 'No disponible')}")
+        st.markdown(f"**Descripción:** {item.get('overview', 'No disponible')}")
 
         # Botón para regresar a la lista
         if st.button("Volver a la lista"):
