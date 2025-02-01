@@ -84,9 +84,9 @@ elif st.session_state.page == "series":
 
     if search_button:
         show_query = f"SELECT * FROM {table_shows} ORDER BY vote_average DESC"
-        show_data = fetch_data(show_query).head(10)
+        show_data = fetch_data(show_query)
 
-        # Aplicar filtros usando pandas str.contains()
+        # Aplicar filtros usando str.contains
         if not show_data.empty:
             show_data = show_data[
                 show_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
@@ -122,9 +122,9 @@ elif st.session_state.page == "movies":
 
     if search_button:
         movie_query = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
-        movie_data = fetch_data(movie_query).head(10)
+        movie_data = fetch_data(movie_query)
 
-        # Aplicar filtros usando pandas str.contains()
+        # Aplicar filtros usando str.contains
         if not movie_data.empty:
             movie_data = movie_data[
                 movie_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
