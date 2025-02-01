@@ -24,35 +24,18 @@ connection_string = (
 )
 
 def fetch_data(query):
-    """Ejecuta una consulta SQL y devuelve un DataFrame"""
+    """Ejecuta una consulta SQL y devuelve un DataFrame."""
     try:
-        engine = sa.create_engine(
-            connection_string,
-            echo=False,
-            connect_args={"autocommit": True},
-        )
+        engine = sa.create_engine(connection_string, echo=False, connect_args={"autocommit": True})
         with engine.connect() as conn:
             return pd.read_sql_query(query, conn)
     except Exception as e:
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def apply_filters(df, title, overview, genre, network=None):
-    """Aplica filtros usando str.contains en el DataFrame."""
-    if title.strip():
-        df = df[df['title'].str.contains(title, case=False, na=False) | df['original_name'].str.contains(title, case=False, na=False)]
-    if overview.strip():
-        df = df[df['overview'].str.contains(overview, case=False, na=False)]
-    if genre.strip():
-        df = df[df['genres'].str.contains(genre, case=False, na=False)]
-    if network and 'networks' in df.columns:
-        df = df[df['networks'].str.contains(network, case=False, na=False)]
-    return df
-
-def navigate(page, item):
-    """Guarda el registro seleccionado y navega a la página de detalles."""
+def navigate(page, item=None):
     st.session_state.page = page
-    st.session_state.selected_item = item  # Guardar el registro completo como diccionario
+    st.session_state.selected_item = item
     st.rerun()
 
 def get_image_url(poster_path):
@@ -61,105 +44,73 @@ def get_image_url(poster_path):
         return f"https://image.tmdb.org/t/p/w500{poster_path}"
     return "https://via.placeholder.com/200?text=No+Image"
 
-# =================== Página Principal ===================
+# =================== Control de Navegación ===================
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
+# =================== Página Principal ===================
 if st.session_state.page == "home":
-    # ========= Mostrar portada si no hay búsqueda =========
-    if "search_active" not in st.session_state or not st.session_state.search_active:
-        st.image("https://via.placeholder.com/800x400.png?text=Bienvenido+a+la+Base+de+Pel%C3%ADculas+y+Series", use_column_width=True)
-        st.markdown("## ¡Bienvenido! Usa los filtros de búsqueda para explorar series y películas.")
-
-    # ========= Filtros de usuario =========
     st.sidebar.header("Filtros de Búsqueda")
-    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
-    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
-
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
     overview_input = st.sidebar.text_input("Descripción / Sinopsis", "")
-    network_input = None
-
-    if search_shows:
-        network_input = st.sidebar.text_input("Network (Para series)")
-
-    # Mostrar campo adicional para excluir contenido adulto solo si se busca películas
-    exclude_adult = None
-    if search_movies:
-        exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
-
-    # Botón para activar la búsqueda
     search_button = st.sidebar.button("Buscar")
 
-    # Si se presiona "Buscar", construir consultas y traer datos
     if search_button:
-        st.session_state.search_active = True
+        query_movies = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
+        query_shows = f"SELECT * FROM {table_shows} ORDER BY vote_average DESC"
 
-        # ========== Consultas dinámicas ==========
-        if search_movies:
-            movie_query = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
-            movie_data = fetch_data(movie_query)
+        movie_data = fetch_data(query_movies).head(10)
+        show_data = fetch_data(query_shows).head(10)
 
-            # Aplicar filtro de contenido adulto si es necesario
-            if exclude_adult is not None:
-                movie_data = movie_data[movie_data['adult'] == (0 if exclude_adult else 1)]
-
-            # Aplicar filtros usando str.contains()
-            movie_data = apply_filters(movie_data, title_input, overview_input, genre_input)
-
-            movie_data = movie_data.head(10)  # Limitar a los primeros 10 resultados
-
-            st.subheader("Resultados - Películas")
-            if not movie_data.empty:
-                cols = st.columns(2)  # Mostrar en 2 columnas
-                for i, row in enumerate(movie_data.itertuples()):
+        # Mostrar resultados de películas
+        st.subheader("Resultados - Películas")
+        if not movie_data.empty:
+            cols_movies = st.columns(2)
+            for i, row in enumerate(movie_data.itertuples()):
+                with cols_movies[i % 2]:
+                    st.image(get_image_url(row.poster_path), width=200)
                     year = str(row.release_date)[:4] if pd.notna(row.release_date) else "N/A"
-                    with cols[i % 2]:  # Alternar entre columnas
-                        st.image(get_image_url(row.poster_path), width=200)
-                        if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
-                            navigate("details", row._asdict())  # Pasar el registro como diccionario
+                    if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
+                        navigate("details", row._asdict())
+        else:
+            st.warning("No se encontraron películas para los filtros seleccionados.")
 
-            else:
-                st.warning("No se encontraron películas para los filtros seleccionados.")
-
-        if search_shows:
-            show_query = f"SELECT * FROM {table_shows} ORDER BY vote_average DESC"
-            show_data = fetch_data(show_query)
-
-            # Aplicar filtros usando str.contains()
-            show_data = apply_filters(show_data, title_input, overview_input, genre_input, network=network_input)
-
-            show_data = show_data.head(10)  # Limitar a los primeros 10 resultados
-
-            st.subheader("Resultados - Series")
-            if not show_data.empty:
-                cols = st.columns(2)  # Mostrar en 2 columnas
-                for i, row in enumerate(show_data.itertuples()):
+        # Mostrar resultados de series
+        st.subheader("Resultados - Series")
+        if not show_data.empty:
+            cols_shows = st.columns(2)
+            for i, row in enumerate(show_data.itertuples()):
+                with cols_shows[i % 2]:
+                    st.image(get_image_url(row.poster_path), width=200)
                     year = str(row.first_air_date)[:4] if pd.notna(row.first_air_date) else "N/A"
-                    with cols[i % 2]:  # Alternar entre columnas
-                        st.image(get_image_url(row.poster_path), width=200)
-                        if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
-                            navigate("details", row._asdict())  # Pasar el registro como diccionario
-
-            else:
-                st.warning("No se encontraron series para los filtros seleccionados.")
+                    if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
+                        navigate("details", row._asdict())
+        else:
+            st.warning("No se encontraron series para los filtros seleccionados.")
 
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
     if st.session_state.selected_item:
-        item = st.session_state.selected_item  # Acceder al registro seleccionado
+        item = st.session_state.selected_item
         base_url = "https://image.tmdb.org/t/p/w500"
 
-        # Mostrar imagen de fondo si está disponible
+        # Mostrar imagen de fondo
         if 'backdrop_path' in item and item['backdrop_path']:
             st.image(base_url + item['backdrop_path'], use_column_width=True)
 
-        # Mostrar detalles del show o película
-        st.markdown(f"## {item.get('title', item.get('original_name', 'Desconocido'))}")
-        st.markdown(f"**Rating:** {item['vote_average']} ⭐ ({item['vote_count']} votos)")
-        st.markdown(f"**Géneros:** {item.get('genres', 'No disponible')}")
-        st.markdown(f"**Descripción:** {item.get('overview', 'No disponible')}")
+        # Mostrar detalles en dos columnas
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.image(get_image_url(item.get('poster_path')), width=250)
+
+        with col2:
+            st.markdown(f"# {item.get('title', item.get('original_name', 'Desconocido'))}")
+            st.markdown(f"**Rating:** {item.get('vote_average', 'N/A')} ⭐ ({item.get('vote_count', 0)} votos)")
+            st.markdown(f"**Géneros:** {item.get('genres', 'No disponible')}")
+            st.markdown(f"**Descripción:** {item.get('overview', 'No disponible')}")
+            st.markdown(f"**Popularidad:** {item.get('popularity', 'N/A')}")
+            st.markdown(f"**Idioma original:** {item.get('original_language', 'N/A').upper()}")
 
         # Botón para regresar a la lista
         if st.button("Volver a la lista"):
