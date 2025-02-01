@@ -6,9 +6,6 @@ import pandas as pd
 # =================== Configurar Página ===================
 st.set_page_config(page_title="TMDB Buscador", page_icon="🎬", layout="wide")
 
-# (Opcional: para depurar, mostramos la página actual)
-st.write("Página actual:", st.session_state.get("page", "home"))
-
 # =================== Configuración de Base de Datos ===================
 server = "nwn7f7ze6vtuxen5age454nhca-colrz4odas5unhn7cagatohexq.datawarehouse.fabric.microsoft.com"
 database = "TMDB"
@@ -31,7 +28,11 @@ connection_string = (
 @st.cache_data
 def fetch_data(query):
     try:
-        engine = sa.create_engine(connection_string, echo=False, connect_args={"autocommit": True})
+        engine = sa.create_engine(
+            connection_string,
+            echo=False,
+            connect_args={"autocommit": True}
+        )
         with engine.connect() as conn:
             return pd.read_sql_query(query, conn)
     except Exception as e:
@@ -46,7 +47,9 @@ def filter_top_shows(df, genre):
         if not top.empty:
             base_url = "https://image.tmdb.org/t/p/w500"
             top = top.copy()
-            top['image_url'] = top['poster_path'].apply(lambda x: base_url + x if pd.notna(x) else None)
+            top['image_url'] = top['poster_path'].apply(
+                lambda x: base_url + x if pd.notna(x) else None
+            )
             return top[top['image_url'].notna()]
     return pd.DataFrame()
 
@@ -58,7 +61,9 @@ def filter_top_movies(df, genre):
         if not top.empty:
             base_url = "https://image.tmdb.org/t/p/w500"
             top = top.copy()
-            top['image_url'] = top['poster_path'].apply(lambda x: base_url + x if pd.notna(x) else None)
+            top['image_url'] = top['poster_path'].apply(
+                lambda x: base_url + x if pd.notna(x) else None
+            )
             return top[top['image_url'].notna()]
     return pd.DataFrame()
 
@@ -74,10 +79,7 @@ if "search_genre" not in st.session_state:
 def navigate(page, item=None):
     st.session_state.page = page
     st.session_state.selected_item = item
-    try:
-        st.experimental_rerun()
-    except Exception as e:
-        st.write("Navegación actualizada, por favor interactúa nuevamente.")
+    st.experimental_rerun()
 
 # =================== Rutas/Páginas de la Aplicación ===================
 
