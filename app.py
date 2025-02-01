@@ -51,7 +51,8 @@ def build_query(table, genre, title, overview, network=None, exclude_adult=None)
     if network and table == table_shows:
         conditions.append(f"networks LIKE '%{network}%'")
     if exclude_adult is not None and table == table_movies:
-        conditions.append(f"adult = {str(exclude_adult).lower()}")
+        # Convertimos el booleano a 0 o 1 para SQL Server
+        conditions.append(f"adult = {0 if exclude_adult else 1}")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
     query = f"SELECT * FROM {table} WHERE {where_clause}"
