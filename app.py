@@ -27,7 +27,7 @@ connection_string = (
 )
 
 def fetch_data(query):
-    """Ejecuta una consulta SQL y devuelve un DataFrame"""
+    """Ejecuta una consulta SQL y devuelve un DataFrame."""
     try:
         engine = sa.create_engine(connection_string, echo=False, connect_args={"autocommit": True})
         with engine.connect() as conn:
@@ -59,64 +59,40 @@ if "overview_input" not in st.session_state:
 if "exclude_adult" not in st.session_state:
     st.session_state.exclude_adult = True
 
-# =================== Página Principal ===================
+# =================== Página de Inicio ===================
 if st.session_state.page == "home":
-    # Mostrar imagen de portada solo en la página principal
     st.image(PORTADA_URL, use_container_width=True)
-    st.markdown("## ¡Bienvenido! Usa los filtros de búsqueda para explorar series y películas.")
+    st.markdown("## ¡Bienvenido a la plataforma de películas y series!")
+    st.markdown("Selecciona una de las opciones a continuación:")
 
-    # Filtros de búsqueda en la barra lateral
-    st.sidebar.header("Filtros de Búsqueda")
-    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
-    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Buscar Series"):
+            navigate("series")
+    with col2:
+        if st.button("Buscar Películas"):
+            navigate("movies")
 
+# =================== Página de Series ===================
+elif st.session_state.page == "series":
+    st.header("Buscar Series")
+    st.sidebar.header("Filtros de Búsqueda (Series)")
     st.session_state.genre_input = st.sidebar.text_input("Género", st.session_state.genre_input)
     st.session_state.title_input = st.sidebar.text_input("Título / Nombre Original", st.session_state.title_input)
     st.session_state.overview_input = st.sidebar.text_input("Descripción / Sinopsis", st.session_state.overview_input)
+    search_button = st.sidebar.button("Buscar Series")
 
-    if search_movies:
-        st.session_state.exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
-
-    search_button = st.sidebar.button("Buscar")
-
-    # Si se presiona buscar, realizar la consulta
     if search_button:
-        movie_query = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
         show_query = f"SELECT * FROM {table_shows} ORDER BY vote_average DESC"
-
-        movie_data = fetch_data(movie_query).head(10) if search_movies else pd.DataFrame()
-        show_data = fetch_data(show_query).head(10) if search_shows else pd.DataFrame()
+        show_data = fetch_data(show_query).head(10)
 
         # Aplicar filtros usando pandas str.contains()
-        if not movie_data.empty:
-            movie_data = movie_data[
-                movie_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
-                movie_data['title'].str.contains(st.session_state.title_input, case=False, na=False) &
-                movie_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False)
-            ]
-            if st.session_state.exclude_adult:
-                movie_data = movie_data[movie_data['adult'] == 0]
-
         if not show_data.empty:
             show_data = show_data[
                 show_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
                 show_data['original_name'].str.contains(st.session_state.title_input, case=False, na=False) &
                 show_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False)
             ]
-
-        # Mostrar resultados de películas
-        if not movie_data.empty:
-            st.subheader("Resultados - Películas")
-            cols_movies = st.columns(2)
-            for i, row in enumerate(movie_data.itertuples()):
-                with cols_movies[i % 2]:
-                    st.image(get_image_url(row.poster_path), width=200)
-                    year = str(row.release_date)[:4] if pd.notna(row.release_date) else "N/A"
-                    if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
-                        navigate("details", row._asdict())
-        else:
-            if search_movies:
-                st.warning("No se encontraron películas para los filtros seleccionados.")
 
         # Mostrar resultados de series
         if not show_data.empty:
@@ -129,8 +105,50 @@ if st.session_state.page == "home":
                     if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
                         navigate("details", row._asdict())
         else:
-            if search_shows:
-                st.warning("No se encontraron series para los filtros seleccionados.")
+            st.warning("No se encontraron series para los filtros seleccionados.")
+
+    if st.button("Volver a la Página Principal"):
+        navigate("home")
+
+# =================== Página de Películas ===================
+elif st.session_state.page == "movies":
+    st.header("Buscar Películas")
+    st.sidebar.header("Filtros de Búsqueda (Películas)")
+    st.session_state.genre_input = st.sidebar.text_input("Género", st.session_state.genre_input)
+    st.session_state.title_input = st.sidebar.text_input("Título", st.session_state.title_input)
+    st.session_state.overview_input = st.sidebar.text_input("Descripción / Sinopsis", st.session_state.overview_input)
+    st.session_state.exclude_adult = st.sidebar.checkbox("Excluir contenido adulto", value=True)
+    search_button = st.sidebar.button("Buscar Películas")
+
+    if search_button:
+        movie_query = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
+        movie_data = fetch_data(movie_query).head(10)
+
+        # Aplicar filtros usando pandas str.contains()
+        if not movie_data.empty:
+            movie_data = movie_data[
+                movie_data['genres'].str.contains(st.session_state.genre_input, case=False, na=False) &
+                movie_data['title'].str.contains(st.session_state.title_input, case=False, na=False) &
+                movie_data['overview'].str.contains(st.session_state.overview_input, case=False, na=False)
+            ]
+            if st.session_state.exclude_adult:
+                movie_data = movie_data[movie_data['adult'] == 0]
+
+        # Mostrar resultados de películas
+        if not movie_data.empty:
+            st.subheader("Resultados - Películas")
+            cols_movies = st.columns(2)
+            for i, row in enumerate(movie_data.itertuples()):
+                with cols_movies[i % 2]:
+                    st.image(get_image_url(row.poster_path), width=200)
+                    year = str(row.release_date)[:4] if pd.notna(row.release_date) else "N/A"
+                    if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
+                        navigate("details", row._asdict())
+        else:
+            st.warning("No se encontraron películas para los filtros seleccionados.")
+
+    if st.button("Volver a la Página Principal"):
+        navigate("home")
 
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
@@ -156,5 +174,5 @@ elif st.session_state.page == "details":
             st.markdown(f"**Idioma original:** {item.get('original_language', 'N/A').upper()}")
 
         # Botón para regresar a la lista
-        if st.button("Volver a la lista"):
+        if st.button("Volver a la Página Principal"):
             navigate("home")
