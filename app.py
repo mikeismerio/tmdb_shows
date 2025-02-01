@@ -37,7 +37,7 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def build_query(table, genre, title, overview, network=None, exclude_adult=None, limit=10):
+def build_query(table, genre, title, overview, network=None, exclude_adult=None):
     """Construye una consulta SQL dinámica según los filtros seleccionados."""
     conditions = []
     
@@ -55,7 +55,7 @@ def build_query(table, genre, title, overview, network=None, exclude_adult=None,
         conditions.append(f"adult = {0 if exclude_adult else 1}")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
-    query = f"SELECT TOP {limit} * FROM {table} WHERE {where_clause}"
+    query = f"SELECT TOP 10 * FROM {table} WHERE {where_clause} ORDER BY vote_average DESC"
     return query
 
 # =================== Página Principal ===================
@@ -75,8 +75,8 @@ if st.session_state.page == "home":
 
     # ========= Filtros de usuario =========
     st.sidebar.header("Filtros de Búsqueda")
-    search_movies = st.sidebar.checkbox("Buscar Películas", value=False)
-    search_shows = st.sidebar.checkbox("Buscar Series", value=False)
+    search_movies = st.sidebar.checkbox("Buscar Películas", value=True)
+    search_shows = st.sidebar.checkbox("Buscar Series", value=True)
 
     genre_input = st.sidebar.text_input("Género", "")
     title_input = st.sidebar.text_input("Título / Nombre Original", "")
