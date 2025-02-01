@@ -54,6 +54,12 @@ def navigate(page, item=None):
     st.session_state.selected_item = item
     st.rerun()
 
+def get_image_url(poster_path):
+    """Devuelve la URL de la imagen o una imagen de marcador de posición."""
+    if pd.notna(poster_path):
+        return f"https://image.tmdb.org/t/p/w500{poster_path}"
+    return "https://via.placeholder.com/200?text=No+Image"
+
 # =================== Página Principal ===================
 if "page" not in st.session_state:
     st.session_state.page = "home"
@@ -109,8 +115,9 @@ if st.session_state.page == "home":
                 for i, row in enumerate(movie_data.itertuples()):
                     year = str(row.release_date)[:4] if pd.notna(row.release_date) else "N/A"
                     with cols[i % 2]:  # Alternar entre columnas
+                        st.image(get_image_url(row.poster_path), width=200)
                         if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
-                            navigate("details", row)
+                            navigate("details", row._asdict())  # Pasar datos como diccionario
 
             else:
                 st.warning("No se encontraron películas para los filtros seleccionados.")
@@ -130,8 +137,9 @@ if st.session_state.page == "home":
                 for i, row in enumerate(show_data.itertuples()):
                     year = str(row.first_air_date)[:4] if pd.notna(row.first_air_date) else "N/A"
                     with cols[i % 2]:  # Alternar entre columnas
+                        st.image(get_image_url(row.poster_path), width=200)
                         if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
-                            navigate("details", row)
+                            navigate("details", row._asdict())  # Pasar datos como diccionario
 
             else:
                 st.warning("No se encontraron series para los filtros seleccionados.")
@@ -143,14 +151,14 @@ elif st.session_state.page == "details":
         base_url = "https://image.tmdb.org/t/p/w500"
 
         # Mostrar imagen de fondo
-        if hasattr(item, 'backdrop_path') and item.backdrop_path:
-            st.image(base_url + item.backdrop_path, use_column_width=True)
+        if 'backdrop_path' in item and item['backdrop_path']:
+            st.image(base_url + item['backdrop_path'], use_column_width=True)
 
         # Información detallada
-        st.markdown(f"## {item.title if hasattr(item, 'title') else item.original_name}")
-        st.markdown(f"**Rating:** {item.vote_average} ⭐ ({item.vote_count} votos)")
-        st.markdown(f"**Géneros:** {item.genres}")
-        st.markdown(f"**Descripción:** {item.overview if pd.notna(item.overview) else 'No disponible'}")
+        st.markdown(f"## {item['title'] if 'title' in item else item['original_name']}")
+        st.markdown(f"**Rating:** {item['vote_average']} ⭐ ({item['vote_count']} votos)")
+        st.markdown(f"**Géneros:** {item['genres']}")
+        st.markdown(f"**Descripción:** {item['overview'] if pd.notna(item['overview']) else 'No disponible'}")
 
         # Botón para regresar a la lista
         if st.button("Volver a la lista"):
