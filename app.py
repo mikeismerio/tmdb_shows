@@ -41,12 +41,11 @@ def build_query(table, genre, title, overview, network=None, exclude_adult=None)
     """Construye una consulta SQL dinámica según los filtros seleccionados."""
     conditions = []
     
-    if genre:
+    if genre.strip():
         conditions.append(f"genres LIKE '%{genre}%'")
-    if title:
-        conditions.append(f"title LIKE '%{title}%'")  # Para películas
-        conditions.append(f"original_name LIKE '%{title}%'")  # Para series
-    if overview:
+    if title.strip():
+        conditions.append(f"(title LIKE '%{title}%' OR original_name LIKE '%{title}%')")  # Para películas y series
+    if overview.strip():
         conditions.append(f"overview LIKE '%{overview}%'")
     if network and table == table_shows:
         conditions.append(f"networks LIKE '%{network}%'")
@@ -55,7 +54,7 @@ def build_query(table, genre, title, overview, network=None, exclude_adult=None)
         conditions.append(f"adult = {0 if exclude_adult else 1}")
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"  # Siempre válido si no hay filtros
-    query = f"SELECT TOP 10 * FROM {table} WHERE {where_clause} ORDER BY vote_average DESC"
+    query = f"SELECT * FROM {table} WHERE {where_clause} ORDER BY vote_average DESC"
     return query
 
 # =================== Página Principal ===================
@@ -102,7 +101,7 @@ if st.session_state.page == "home":
         # ========== Consultas dinámicas ==========
         if search_movies:
             movie_query = build_query(table_movies, genre_input, title_input, overview_input, exclude_adult=exclude_adult)
-            movie_data = fetch_data(movie_query)
+            movie_data = fetch_data(movie_query).head(10)  # Traer solo los primeros 10 resultados
 
             st.subheader("Resultados - Películas")
             if not movie_data.empty:
@@ -119,7 +118,7 @@ if st.session_state.page == "home":
 
         if search_shows:
             show_query = build_query(table_shows, genre_input, title_input, overview_input, network=network_input)
-            show_data = fetch_data(show_query)
+            show_data = fetch_data(show_query).head(10)  # Traer solo los primeros 10 resultados
 
             st.subheader("Resultados - Series")
             if not show_data.empty:
