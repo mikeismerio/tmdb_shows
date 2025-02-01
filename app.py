@@ -83,7 +83,12 @@ elif st.session_state.page == "series":
     search_button = st.sidebar.button("Buscar Series")
 
     if search_button:
-        show_query = f"SELECT * FROM {table_shows} ORDER BY vote_average DESC"
+        # Construir consulta SQL
+        show_query = f"""
+        SELECT TOP 10 * 
+        FROM {table_shows} 
+        ORDER BY weighted_rating DESC
+        """
         show_data = fetch_data(show_query)
 
         # Aplicar filtros usando str.contains
@@ -121,7 +126,12 @@ elif st.session_state.page == "movies":
     search_button = st.sidebar.button("Buscar Películas")
 
     if search_button:
-        movie_query = f"SELECT * FROM {table_movies} ORDER BY vote_average DESC"
+        # Construir consulta SQL
+        movie_query = f"""
+        SELECT TOP 10 * 
+        FROM {table_movies} 
+        ORDER BY weighted_rating DESC
+        """
         movie_data = fetch_data(movie_query)
 
         # Aplicar filtros usando str.contains
