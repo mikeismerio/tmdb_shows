@@ -41,20 +41,11 @@ def fetch_data(query):
         st.error(f"Error al ejecutar la consulta: {e}")
         return pd.DataFrame()
 
-def navigate(page, item=None):
-    st.session_state.page = page
-    st.session_state.selected_item = item
-    st.experimental_rerun()
-
-def get_image_url(poster_path):
-    """Devuelve la URL de la imagen o una imagen de marcador de posición."""
-    if pd.notna(poster_path):
-        return f"https://image.tmdb.org/t/p/w500{poster_path}"
-    return "https://via.placeholder.com/200?text=No+Image"
-
 # =================== Inicialización del estado ===================
 if "page" not in st.session_state:
     st.session_state.page = "home"
+if "selected_item" not in st.session_state:
+    st.session_state.selected_item = None
 if "genre_input" not in st.session_state:
     st.session_state.genre_input = ""
 if "title_input" not in st.session_state:
@@ -63,6 +54,11 @@ if "overview_input" not in st.session_state:
     st.session_state.overview_input = ""
 if "exclude_adult" not in st.session_state:
     st.session_state.exclude_adult = True
+
+# =================== Función de navegación ===================
+def navigate(page, item=None):
+    st.session_state.page = page
+    st.session_state.selected_item = item
 
 # =================== Página de Inicio ===================
 if st.session_state.page == "home":
@@ -118,7 +114,7 @@ elif st.session_state.page == "series":
         else:
             st.warning("No se encontraron series para los filtros seleccionados.")
 
-    if st.button("Volver a la Página Principal"):
+    if st.button("Volver a la Página Principal", key="back_to_home_series"):
         navigate("home")
 
 # =================== Página de Películas ===================
@@ -164,7 +160,7 @@ elif st.session_state.page == "movies":
         else:
             st.warning("No se encontraron películas para los filtros seleccionados.")
 
-    if st.button("Volver a la Página Principal"):
+    if st.button("Volver a la Página Principal", key="back_to_home_movies"):
         navigate("home")
 
 # =================== Página de Detalles ===================
@@ -191,5 +187,5 @@ elif st.session_state.page == "details":
             st.markdown(f"**Idioma original:** {item.get('original_language', 'N/A').upper()}")
 
         # Botón para regresar a la lista
-        if st.button("Volver a la Página Principal"):
+        if st.button("Volver a la Página Principal", key="back_to_home_details"):
             navigate("home")
