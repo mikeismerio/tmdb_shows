@@ -38,15 +38,24 @@ def fetch_data(query):
         return pd.DataFrame()
 
 @st.cache_data
-def filter_top_shows(df, genre):
-    """Filtra y ordena los 10 mejores shows según el género"""
+def filter_top_shows(df, genre, title, overview, network):
+    """Filtra y ordena los 10 mejores shows según el género, título, overview y network"""
+    filtered_shows = df.copy()
+    
     if genre:
-        filtered_shows = df[df['genres'].str.contains(genre, case=False, na=False)]
-        top_shows = filtered_shows.sort_values(by='vote_average', ascending=False).head(10)
-        if not top_shows.empty:
-            base_url = "https://image.tmdb.org/t/p/w500"
-            top_shows['image_url'] = base_url + top_shows['poster_path']
-            return top_shows[top_shows['image_url'].notna()]
+        filtered_shows = filtered_shows[filtered_shows['genres'].str.contains(genre, case=False, na=False)]
+    if title:
+        filtered_shows = filtered_shows[filtered_shows['name'].str.contains(title, case=False, na=False)]
+    if overview:
+        filtered_shows = filtered_shows[filtered_shows['overview'].str.contains(overview, case=False, na=False)]
+    if network:
+        filtered_shows = filtered_shows[filtered_shows['networks'].str.contains(network, case=False, na=False)]
+    
+    top_shows = filtered_shows.sort_values(by='vote_average', ascending=False).head(10)
+    if not top_shows.empty:
+        base_url = "https://image.tmdb.org/t/p/w500"
+        top_shows['image_url'] = base_url + top_shows['poster_path']
+        return top_shows[top_shows['image_url'].notna()]
     return pd.DataFrame()
 
 # =================== Control de Navegación ===================
@@ -55,6 +64,12 @@ if "page" not in st.session_state:
     st.session_state.selected_movie = None
 if "search_genre" not in st.session_state:
     st.session_state.search_genre = ""
+if "search_title" not in st.session_state:
+    st.session_state.search_title = ""
+if "search_overview" not in st.session_state:
+    st.session_state.search_overview = ""
+if "search_network" not in st.session_state:
+    st.session_state.search_network = ""
 
 def navigate(page, movie=None):
     st.session_state.page = page
@@ -67,10 +82,17 @@ if st.session_state.page == "home":
     df = fetch_data(query)
 
     genre_input = st.text_input("Introduce el Género:", st.session_state.search_genre)
+    title_input = st.text_input("Introduce el Título:", st.session_state.search_title)
+    overview_input = st.text_input("Introduce el Overview:", st.session_state.search_overview)
+    network_input = st.text_input("Introduce la Red (Network):", st.session_state.search_network)
 
-    if genre_input:
+    if genre_input or title_input or overview_input or network_input:
         st.session_state.search_genre = genre_input
-        top_shows = filter_top_shows(df, genre_input)
+        st.session_state.search_title = title_input
+        st.session_state.search_overview = overview_input
+        st.session_state.search_network = network_input
+
+        top_shows = filter_top_shows(df, genre_input, title_input, overview_input, network_input)
 
         if not top_shows.empty:
             cols_per_row = 5
@@ -87,9 +109,9 @@ if st.session_state.page == "home":
                     if st.button(button_label, key=row.Index):
                         navigate("details", row)
         else:
-            st.warning("No se encontraron resultados para el género ingresado.")
+            st.warning("No se encontraron resultados para los criterios ingresados.")
     else:
-        st.info("Introduce un género para buscar los Top 10 Shows.")
+        st.info("Introduce un género, título, overview o red para buscar los Top 10 Shows.")
 
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
@@ -143,4 +165,3 @@ elif st.session_state.page == "details":
         st.warning("No se ha seleccionado ninguna serie.")
         if st.button("Volver a la lista"):
             navigate("home")
-
