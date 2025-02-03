@@ -70,6 +70,8 @@ if "search_overview" not in st.session_state:
     st.session_state.search_overview = ""
 if "search_network" not in st.session_state:
     st.session_state.search_network = ""
+if "search_triggered" not in st.session_state:
+    st.session_state.search_triggered = False
 
 def navigate(page, movie=None):
     st.session_state.page = page
@@ -86,13 +88,17 @@ if st.session_state.page == "home":
     overview_input = st.text_input("Introduce el Overview:", st.session_state.search_overview)
     network_input = st.text_input("Introduce la Red (Network):", st.session_state.search_network)
 
-    if genre_input or title_input or overview_input or network_input:
+    # Botón para activar la búsqueda
+    if st.button("Buscar"):
         st.session_state.search_genre = genre_input
         st.session_state.search_title = title_input
         st.session_state.search_overview = overview_input
         st.session_state.search_network = network_input
+        st.session_state.search_triggered = True
 
-        top_shows = filter_top_shows(df, genre_input, title_input, overview_input, network_input)
+    # Solo realizar la búsqueda si se ha presionado el botón "Buscar"
+    if st.session_state.search_triggered:
+        top_shows = filter_top_shows(df, st.session_state.search_genre, st.session_state.search_title, st.session_state.search_overview, st.session_state.search_network)
 
         if not top_shows.empty:
             cols_per_row = 5
@@ -111,7 +117,7 @@ if st.session_state.page == "home":
         else:
             st.warning("No se encontraron resultados para los criterios ingresados.")
     else:
-        st.info("Introduce un género, título, overview o red para buscar los Top 10 Shows.")
+        st.info("Introduce un género, título, overview o red y presiona 'Buscar' para ver los resultados.")
 
 # =================== Página de Detalles ===================
 elif st.session_state.page == "details":
