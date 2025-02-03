@@ -72,10 +72,10 @@ if st.session_state.page == "home":
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Buscar Series"):
+        if st.button("Buscar Series", key="series_btn"):
             navigate("series")
     with col2:
-        if st.button("Buscar Películas"):
+        if st.button("Buscar Películas", key="movies_btn"):
             navigate("movies")
 
 # =================== Página de Series ===================
@@ -113,7 +113,7 @@ elif st.session_state.page == "series":
                 with cols_shows[i % 2]:
                     st.image(get_image_url(row.poster_path), width=200)
                     year = str(row.first_air_date)[:4] if pd.notna(row.first_air_date) else "N/A"
-                    if st.button(f"{row.original_name} ({year})", key=f"show_{row.Index}"):
+                    if st.button(f"{row.original_name} ({year})", key=f"show_{i}"):
                         navigate("details", row._asdict())
         else:
             st.warning("No se encontraron series para los filtros seleccionados.")
@@ -159,10 +159,37 @@ elif st.session_state.page == "movies":
                 with cols_movies[i % 2]:
                     st.image(get_image_url(row.poster_path), width=200)
                     year = str(row.release_date)[:4] if pd.notna(row.release_date) else "N/A"
-                    if st.button(f"{row.title} ({year})", key=f"movie_{row.Index}"):
+                    if st.button(f"{row.title} ({year})", key=f"movie_{i}"):
                         navigate("details", row._asdict())
         else:
             st.warning("No se encontraron películas para los filtros seleccionados.")
 
     if st.button("Volver a la Página Principal"):
         navigate("home")
+
+# =================== Página de Detalles ===================
+elif st.session_state.page == "details":
+    if st.session_state.selected_item:
+        item = st.session_state.selected_item
+        base_url = "https://image.tmdb.org/t/p/w500"
+
+        # Mostrar imagen de fondo si está disponible
+        if item.get('backdrop_path'):
+            st.image(base_url + item['backdrop_path'], use_container_width=True)
+
+        # Mostrar detalles en dos columnas
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.image(get_image_url(item.get('poster_path')), width=250)
+
+        with col2:
+            st.markdown(f"# {item.get('title', item.get('original_name', 'Desconocido'))}")
+            st.markdown(f"**Rating:** {item.get('vote_average', 'N/A')} ⭐ ({item.get('vote_count', 0)} votos)")
+            st.markdown(f"**Géneros:** {item.get('genres', 'No disponible')}")
+            st.markdown(f"**Descripción:** {item.get('overview', 'No disponible')}")
+            st.markdown(f"**Popularidad:** {item.get('popularity', 'N/A')}")
+            st.markdown(f"**Idioma original:** {item.get('original_language', 'N/A').upper()}")
+
+        # Botón para regresar a la lista
+        if st.button("Volver a la Página Principal"):
+            navigate("home")
